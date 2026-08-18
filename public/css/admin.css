@@ -336,6 +336,20 @@
     margin-top: 0.35rem;
 }
 
+.ops-save-status {
+    margin: 0;
+    min-height: 1.1em;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.64rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #9a8f7c;
+}
+
+.ops-save-status.is-busy { color: #f0a24a; }
+.ops-save-status.is-ok { color: #4ecf80; }
+.ops-save-status.is-err { color: #ff6b55; font-weight: 600; }
+
 @media (max-width: 639px) {
     .ops .card-form-compact {
         grid-template-columns: 1fr;

@@ -6,6 +6,7 @@ use App\Models\Absence;
 use App\Models\Affectation;
 use App\Models\AffectationEvenement;
 use App\Models\Completion;
+use App\Models\Regle;
 use App\Models\Tache;
 use App\Models\User;
 use App\Services\JournalAffectation;
@@ -238,6 +239,73 @@ class AlgaTest extends TestCase
             ->assertSee('GROUPE B')
             ->assertSee('Ménage du salon')
             ->assertSee('Cuisine et linge');
+    }
+
+    public function test_une_regle_s_enregistre_en_ajax(): void
+    {
+        $lucas = User::query()->where('name', 'Lucas')->firstOrFail();
+        $regle = Regle::query()->firstOrFail();
+
+        $this->actingAs($lucas)
+            ->put(route('admin.regles.update', $regle), [
+                'piece' => $regle->piece,
+                'contenu' => 'Le plan de travail se quitte propre.',
+                'ordre' => $regle->ordre,
+            ], [
+                'Accept' => 'application/json',
+                'X-Requested-With' => 'XMLHttpRequest',
+            ])
+            ->assertOk()
+            ->assertJson(['ok' => true]);
+
+        $this->assertSame('Le plan de travail se quitte propre.', $regle->fresh()->contenu);
+    }
+
+    public function test_une_tache_s_enregistre_meme_avec_heures_completes(): void
+    {
+        $lucas = User::query()->where('name', 'Lucas')->firstOrFail();
+        $tache = Tache::query()->where('titre', 'Aspirer le sol')->firstOrFail();
+
+        $this->actingAs($lucas)
+            ->from(route('admin.taches.index'))
+            ->put(route('admin.taches.update', $tache), [
+                'titre' => 'Aspirer le sol',
+                'piece' => $tache->piece,
+                'frequence' => 'quotidien',
+                'groupe' => 'A',
+                'heure_limite' => '20:30:00',
+                'penibilite' => 2,
+                'ordre' => $tache->ordre,
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $this->assertSame('20:30', substr((string) $tache->fresh()->heure_limite, 0, 5));
+    }
+
+    public function test_une_tache_s_enregistre_en_ajax(): void
+    {
+        $lucas = User::query()->where('name', 'Lucas')->firstOrFail();
+        $tache = Tache::query()->where('titre', 'Aspirer le sol')->firstOrFail();
+
+        $this->actingAs($lucas)
+            ->put(route('admin.taches.update', $tache), [
+                'titre' => 'Aspirer le salon',
+                'piece' => $tache->piece,
+                'frequence' => 'quotidien',
+                'groupe' => 'A',
+                'heure_limite' => '21:00:00',
+                'penibilite' => 3,
+                'ordre' => $tache->ordre,
+            ], [
+                'Accept' => 'application/json',
+                'X-Requested-With' => 'XMLHttpRequest',
+            ])
+            ->assertOk()
+            ->assertJson(['ok' => true]);
+
+        $this->assertSame('Aspirer le salon', $tache->fresh()->titre);
+        $this->assertSame(3, $tache->fresh()->penibilite);
     }
 
     public function test_le_credit_par_defaut_est_le_couple(): void

@@ -37,6 +37,8 @@ Route::middleware('auth')->group(function () {
 Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', AdminDashboardController::class)->name('index');
     Route::post('/planning', [AdminTacheController::class, 'generer'])->name('planning.generer');
-    Route::resource('taches', AdminTacheController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::resource('taches', AdminTacheController::class)
+        ->only(['index', 'store', 'update', 'destroy'])
+        ->parameters(['taches' => 'tache']);
     Route::resource('regles', AdminRegleController::class)->only(['index', 'store', 'update', 'destroy']);
 });

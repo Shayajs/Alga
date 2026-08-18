@@ -29,7 +29,7 @@
         <section class="rules-block">
             <h2>{{ $piece }}</h2>
             @forelse ($regles as $i => $regle)
-                <form method="POST" action="{{ route('admin.regles.update', $regle) }}" class="card-form">
+                <form method="POST" action="{{ route('admin.regles.update', $regle) }}" class="card-form js-autosave">
                     @csrf
                     @method('PUT')
                     <input type="hidden" name="piece" value="{{ $piece }}">
@@ -43,6 +43,7 @@
                         <input type="number" name="ordre" value="{{ $regle->ordre }}" min="0">
                     </label>
                     <div class="admin-actions">
+                        <p class="ops-save-status" aria-live="polite"></p>
                         <button class="btn btn-primary btn-inline" type="submit">Enregistrer</button>
                         <button class="linkish" form="del-regle-{{ $regle->id }}" type="submit" onclick="return confirm('Retirer cette ligne ?')">Supprimer</button>
                     </div>
@@ -56,4 +57,8 @@
             @endforelse
         </section>
     @endforeach
+@endsection
+
+@section('scripts')
+    <script src="{{ asset('js/admin-autosave.js') }}?v={{ filemtime(public_path('js/admin-autosave.js')) }}"></script>
 @endsection

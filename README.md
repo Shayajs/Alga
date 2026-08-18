@@ -1,58 +1,75 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
-
 <p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+  <img src="public/favicon.png" width="64" height="64" alt="Alga">
 </p>
 
-## About Laravel
+<h1 align="center">Alga</h1>
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+<p align="center">
+  <strong>Le board de la maison.</strong><br>
+  Deux foyers, un planning écrit, des ops ménagères horodatées.
+</p>
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+<p align="center">
+  <img src="public/img/alga.png" width="160" alt="Marque Alga">
+</p>
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+Prod : [alga.pp.ua](https://alga.pp.ua) · PWA (installable sur téléphone)
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## C’est quoi
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Alga répartit les tâches de la maison entre **deux couples**. Chaque jour et chaque semaine, les lots **A** et **B** tournent. Ce qui est coché est vrai.
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+| Lot | Tous les jours | Une fois par semaine |
+| --- | --- | --- |
+| **A** | Ménage du salon | Salon et Cuisine |
+| **B** | Cuisine et linge | Toilettes et salle de bain |
 
-## Agentic Development
+Le jour opérationnel bascule à **03:00**, les heures restent en **UTC+2** (Europe/Paris).
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+**Lucas** a la console `/admin` : catalogue des tâches, règles, régénération du planning (8 semaines). Les cochages déjà faits ne bougent pas.
+
+## Stack
+
+Laravel · MariaDB · Docker · Nginx Proxy Manager (TLS) · PWA (`manifest.webmanifest` + `sw.js`)
+
+## Lancer en local
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+cp .env.example .env
+# APP_KEY : php artisan key:generate (dans le conteneur app)
+docker compose up -d --build
+docker exec alga_app php artisan migrate --force
+docker exec alga_app php artisan db:seed
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Le compose de prod joint le réseau Docker `www_laravel_net`. En local, il te faut ce réseau (stack Allotata) **ou** un override perso — `docker-compose-shaya.dev.yaml` n’est pas versionné.
 
-## Contributing
+## Prod (alga.pp.ua)
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+1. Déposer le `.env` production (`APP_ENV=production`, `APP_DEBUG=false`, `APP_URL=https://alga.pp.ua`).
+2. Dans NPM : Proxy Host `alga.pp.ua` → `alga_nginx` port **80**, SSL on.
+3. Démarrer :
 
-## Code of Conduct
+```bash
+docker compose build app
+docker compose up -d
+docker exec alga_app php artisan migrate --force
+docker exec alga_app php artisan config:cache
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Ne jamais committer `.env`. `vendor/` et `node_modules/` sont ignorés.
 
-## Security Vulnerabilities
+## PWA
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Icônes dans `public/` : `favicon.ico`, `favicon.png`, `icon-192.png`, `icon-512.png`, maskable.
 
-## License
+Sur Android : menu → ajouter à l’écran d’accueil.  
+Sur iPhone : Safari → Partager → Sur l’écran d’accueil.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Tests
+
+```bash
+docker exec alga_app php artisan test
+```

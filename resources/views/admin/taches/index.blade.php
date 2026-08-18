@@ -45,11 +45,12 @@
                             <p class="ops-group-meta">{{ $lot->count() }} tâche{{ $lot->count() > 1 ? 's' : '' }}</p>
                         </header>
                         @foreach ($lot as $tache)
-                            <form method="POST" action="{{ route('admin.taches.update', $tache) }}" class="card-form card-form-compact">
+                            <form method="POST" action="{{ route('admin.taches.update', $tache) }}" class="card-form card-form-compact js-autosave">
                                 @csrf
                                 @method('PUT')
                                 @include('admin.taches._champs', ['tache' => $tache])
                                 <div class="admin-actions">
+                                    <p class="ops-save-status" aria-live="polite"></p>
                                     <button class="btn btn-primary btn-inline" type="submit">Enregistrer</button>
                                     <button class="linkish" form="del-tache-{{ $tache->id }}" type="submit" onclick="return confirm('Retirer cette tâche ?')">Supprimer</button>
                                 </div>
@@ -64,4 +65,8 @@
             </div>
         </section>
     @endforeach
+@endsection
+
+@section('scripts')
+    <script src="{{ asset('js/admin-autosave.js') }}?v={{ filemtime(public_path('js/admin-autosave.js')) }}"></script>
 @endsection

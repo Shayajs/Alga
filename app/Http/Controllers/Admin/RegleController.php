@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Regle;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -39,9 +40,13 @@ class RegleController extends Controller
         return back()->with('ok', 'Règle ajoutée.');
     }
 
-    public function update(Request $request, Regle $regle): RedirectResponse
+    public function update(Request $request, Regle $regle): RedirectResponse|JsonResponse
     {
         $regle->update($this->donnees($request) + ['titre' => null]);
+
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true, 'message' => 'Règle enregistrée.']);
+        }
 
         return back()->with('ok', 'Règle modifiée.');
     }

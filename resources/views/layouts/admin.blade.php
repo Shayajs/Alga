@@ -62,6 +62,9 @@
         @if (session('erreur'))
             <p class="flash flash-err">{{ session('erreur') }}</p>
         @endif
+        @if ($errors->any())
+            <p class="flash flash-err">{{ $errors->first() }}</p>
+        @endif
 
         <main class="ops-content">
             @yield('content')
