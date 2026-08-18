@@ -1,0 +1,82 @@
+# Alga — production
+#
+# Réseau Allotata : nginx joint au réseau Docker externe www_laravel_net
+# (Nginx Proxy Manager Allotata, conteneur npm_proxy). Pas de ports 80/443
+# exposés ici — le routage TLS se fait dans NPM (interface :81).
+#
+# Prérequis sur le serveur :
+#   docker network inspect www_laravel_net   # doit exister (stack Allotata)
+#
+# Dans NPM : Proxy Host → Forward Hostname/IP : alga_nginx , port 80.
+#
+# Démarrage :
+#   docker compose build app
+#   docker compose up -d
+
+name: alga
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: alga-app:${ALGA_IMAGE_TAG:-latest}
+    pull_policy: build
+    container_name: alga_app
+    user: "1000:1000"
+    restart: unless-stopped
+    working_dir: /var/www/html
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      APP_ENV: production
+      HOME: /var/www/html/storage/psysh
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - alga-internal
+
+  nginx:
+    image: nginx:alpine
+    container_name: alga_nginx
+    restart: unless-stopped
+    volumes:
+      - .:/var/www/html:ro
+      - ./docker/nginx/alga.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+    networks:
+      - alga-internal
+      - allotata_npm
+
+  db:
+    image: mariadb:11.4
+    container_name: alga_db
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: "${DB_DATABASE:-alga}"
+      MARIADB_ROOT_PASSWORD: "${DB_PASSWORD:-alga_secret}"
+    volumes:
+      - alga-db-data:/var/lib/mysql
+    networks:
+      - alga-internal
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+networks:
+  alga-internal:
+    driver: bridge
+  # Réseau prod Allotata — partagé avec npm_proxy (Nginx Proxy Manager)
+  allotata_npm:
+    external: true
+    name: www_laravel_net
+
+volumes:
+  alga-db-data:
