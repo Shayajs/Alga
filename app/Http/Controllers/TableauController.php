@@ -39,7 +39,7 @@ class TableauController extends Controller
             'autreCouple' => Couple::query()->whereKeyNot($monCouple->id)->orderBy('id')->first(),
             'lots' => $this->grouperLots($miennes),
             'lotsAutre' => $this->grouperLots($autres),
-            'resteAutre' => $autres->reject->estFaite()->count(),
+            'prisesAutre' => $autres->filter(fn (Affectation $a) => $a->voleeParCouple($monCouple->id))->values(),
             'lotsAvance' => $this->grouperLots($demain),
             'lotDemain' => $demain->first()?->tache->libelleLot(),
         ]);

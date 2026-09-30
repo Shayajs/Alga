@@ -25,7 +25,6 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/planning', [TableauController::class, 'aujourdhui'])->name('tableau.aujourdhui');
     Route::get('/historique', [TableauController::class, 'historique'])->name('tableau.historique');
-    Route::post('/lot-autre/fait', [CompletionController::class, 'volerLot'])->name('completions.voler-lot');
     Route::post('/affectations/{affectation}/fait', [CompletionController::class, 'store'])->name('completions.store');
     Route::post('/affectations/{affectation}/volee', [CompletionController::class, 'voler'])->name('completions.voler');
     Route::put('/affectations/{affectation}', [AffectationController::class, 'update'])->name('affectations.update');

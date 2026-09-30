@@ -535,7 +535,9 @@ class AlgaTest extends TestCase
             ->assertSee('Maman')
             ->assertSee('Papa')
             ->assertSee('Autre personne')
-            ->assertSee('On a fait leur job');
+            ->assertSee('On a fait leur job')
+            ->assertSee('modale-lot-autre', false)
+            ->assertDontSee('lot-autre/fait', false);
     }
 
     public function test_la_semaine_montre_le_passe_et_la_suivante(): void

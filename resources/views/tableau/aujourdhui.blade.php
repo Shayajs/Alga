@@ -25,25 +25,47 @@
     @if ($lotsAutre->isNotEmpty())
         <section class="lot-autre">
             <h2 class="block-title">Lot de {{ $autreCouple?->nom ?? 'l’autre équipe' }}</h2>
-            <p class="lot-kicker">Si vous l’avez fait à leur place</p>
+            <p class="lot-kicker">Ouvre la liste, et coche seulement ce que vous avez fait</p>
             <ul class="lot-legend" aria-label="Couleurs quand une équipe fait le lot de l’autre">
                 <li><span class="hq-swatch swatch-volee"></span> Violet — l’autre équipe a fait notre tâche</li>
                 <li><span class="hq-swatch swatch-prise"></span> Turquoise — on a fait leur tâche</li>
             </ul>
-            @if ($resteAutre > 0)
-                <form method="POST" action="{{ route('completions.voler-lot') }}" class="lot-autre-actions">
-                    @csrf
-                    <button type="submit" class="btn btn-prise">On a fait leur job</button>
-                </form>
+            <button type="button" class="btn btn-prise" data-modale="modale-lot-autre">On a fait leur job</button>
+
+            @if ($prisesAutre->isNotEmpty())
+                @include('partials.taches-liste', ['affectations' => $prisesAutre])
             @endif
-            @foreach ($lotsAutre as $lot)
-                <h2 class="block-title">{{ $lot['piece'] }}</h2>
-                <p class="lot-kicker">{{ $lot['libelle'] }}</p>
-                @include('partials.taches-liste', [
-                    'affectations' => $lot['affectations'],
-                    'vol' => true,
-                ])
-            @endforeach
+
+            <dialog class="modale" id="modale-lot-autre" aria-labelledby="modale-lot-autre-titre" @if (session('ouvrir_lot_autre')) data-open @endif>
+                <article class="modale-sheet">
+                    <header class="modale-head">
+                        <div>
+                            <p class="modale-kicker">Leur lot</p>
+                            <h2 id="modale-lot-autre-titre">{{ $autreCouple?->nom ?? 'L’autre équipe' }}</h2>
+                            <p class="modale-meta">Une tâche à la fois. Rien n’est coché tout seul.</p>
+                        </div>
+                        <form method="dialog">
+                            <button type="submit" class="modale-close" aria-label="Fermer">×</button>
+                        </form>
+                    </header>
+                    @foreach ($lotsAutre as $lot)
+                        <h3 class="vol-lot">{{ $lot['piece'] }}</h3>
+                        <ul class="vol-liste">
+                            @foreach ($lot['affectations'] as $affectation)
+                                @include('partials.lot-autre-modale', [
+                                    'affectation' => $affectation,
+                                    'monCouple' => $monCouple,
+                                ])
+                            @endforeach
+                        </ul>
+                    @endforeach
+                    <footer class="modale-foot">
+                        <form method="dialog">
+                            <button type="submit" class="btn btn-ghost">Fermer</button>
+                        </form>
+                    </footer>
+                </article>
+            </dialog>
         </section>
     @endif
 

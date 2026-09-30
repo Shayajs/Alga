@@ -52,8 +52,13 @@ class AffectationController extends Controller
             $credit['credit_externe'],
         );
 
-        return back()
-            ->with('ok', 'Modification enregistrée et horodatée.')
+        $retour = back()->with('ok', 'Modification enregistrée et horodatée.');
+
+        if ($request->boolean('depuis_lot_autre')) {
+            return $retour->with('ouvrir_lot_autre', true);
+        }
+
+        return $retour
             ->with('ouvrir_piece', $affectation->cleOuverture())
             ->with('ouvrir_tache', $affectation->id);
     }

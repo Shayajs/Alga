@@ -3,10 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Affectation;
-use App\Models\Couple;
 use App\Services\JournalAffectation;
 use App\Support\CreditTache;
-use App\Support\JourMaison;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -66,39 +64,13 @@ class CompletionController extends Controller
             $credit['credit_externe'],
         );
 
-        return back()->with('ok', 'C’est noté : vous avez fait la tâche de '.$affectation->couple->nom.'.')
-            ->with('ouvrir_tache', $affectation->id);
-    }
+        $retour = back()->with('ok', 'C’est noté : vous avez fait la tâche de '.$affectation->couple->nom.'.');
 
-    public function volerLot(Request $request, JournalAffectation $journal): RedirectResponse
-    {
-        $user = $request->user();
-
-        if ($user->couple_id === null) {
-            return back()->with('erreur', 'Aucun foyer associé à ce compte.');
+        if ($request->boolean('depuis_lot_autre')) {
+            return $retour->with('ouvrir_lot_autre', true);
         }
 
-        $autres = Affectation::query()
-            ->with(['couple', 'tache'])
-            ->visiblesPour(JourMaison::actuel())
-            ->where('couple_id', '!=', $user->couple_id)
-            ->whereDoesntHave('completion')
-            ->get();
-
-        if ($autres->isEmpty()) {
-            return back()->with('erreur', 'Leur lot est déjà coché.');
-        }
-
-        foreach ($autres as $affectation) {
-            $journal->appliquer($affectation, $user, true, null, now());
-        }
-
-        $nom = $autres->first()->couple?->nom
-            ?? Couple::query()->whereKeyNot($user->couple_id)->value('nom')
-            ?? 'l’autre équipe';
-        $n = $autres->count();
-
-        return back()->with('ok', 'C’est noté : vous avez fait '.$n.' tâche'.($n > 1 ? 's' : '').' de '.$nom.'.');
+        return $retour->with('ouvrir_tache', $affectation->id);
     }
 
     private function qui(Affectation $affectation): string
