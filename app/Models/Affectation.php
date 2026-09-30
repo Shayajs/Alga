@@ -27,6 +27,7 @@ class Affectation extends Model
         'tache',
         'couple.membres',
         'completion.auteur',
+        'completion.user.couple',
         'completion.affectation.couple',
         'evenements.user',
     ];
@@ -62,7 +63,27 @@ class Affectation extends Model
             return '';
         }
 
-        return $this->completion->auteur?->name ?? $this->couple?->nom ?? '—';
+        $this->completion->setRelation('affectation', $this);
+
+        return $this->completion->libelleAffiche();
+    }
+
+    public function estVolee(): bool
+    {
+        $voleur = $this->completion?->user?->couple_id;
+
+        return $this->completion !== null
+            && $voleur !== null
+            && $voleur !== $this->couple_id;
+    }
+
+    public function voleeParCouple(?int $coupleId): bool
+    {
+        if ($coupleId === null || ! $this->estVolee()) {
+            return false;
+        }
+
+        return $this->completion?->user?->couple_id === $coupleId;
     }
 
     public function peutEtreCocheePar(?User $user): bool
@@ -76,7 +97,9 @@ class Affectation extends Model
             return false;
         }
 
-        return $user->est_admin || $user->couple_id === $this->couple_id;
+        return $user->est_admin
+            || $user->couple_id === $this->couple_id
+            || $this->voleeParCouple($user->couple_id);
     }
 
     public function cleOuverture(): string
@@ -121,6 +144,8 @@ class Affectation extends Model
             'a_faire' => 'À faire',
             'en_retard' => 'Pas coché',
             'avance' => 'Avance',
+            'volee' => 'Faite par l’autre',
+            'prise' => 'Leur tâche, par nous',
             default => $this->statut(),
         };
     }
@@ -132,6 +157,8 @@ class Affectation extends Model
             'a_faire' => 'TODO',
             'en_retard' => 'LATE',
             'avance' => 'AHEAD',
+            'volee' => 'TAKEN',
+            'prise' => 'CLAIM',
             default => strtoupper($this->statut()),
         };
     }
@@ -147,6 +174,17 @@ class Affectation extends Model
 
     public function statut(): string
     {
+        if ($this->estVolee()) {
+            $viewer = auth()->user()?->couple_id;
+            $voleur = $this->completion?->user?->couple_id;
+
+            if ($viewer !== null && $voleur === $viewer && $viewer !== $this->couple_id) {
+                return 'prise';
+            }
+
+            return 'volee';
+        }
+
         if ($this->estEnAvance()) {
             return 'avance';
         }
@@ -160,6 +198,22 @@ class Affectation extends Model
         }
 
         return 'a_faire';
+    }
+
+    /**
+     * @param  iterable<string>  $statuts
+     */
+    public static function toneParmi(iterable $statuts): string
+    {
+        $liste = collect($statuts);
+
+        foreach (['en_retard', 'a_faire', 'volee', 'prise', 'avance', 'fait'] as $statut) {
+            if ($liste->contains($statut)) {
+                return $statut;
+            }
+        }
+
+        return 'vide';
     }
 
     #[Scope]

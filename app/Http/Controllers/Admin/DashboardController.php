@@ -40,7 +40,7 @@ class DashboardController extends Controller
                 'taches' => Tache::query()->count(),
                 'regles' => Regle::query()->count(),
                 'affectations' => Affectation::query()->count(),
-                'fait' => $duJour->filter(fn (Affectation $a) => $a->statut() === 'fait')->count(),
+                'fait' => $duJour->filter(fn (Affectation $a) => $a->estFaite())->count(),
                 'a_faire' => $duJour->filter(fn (Affectation $a) => $a->statut() === 'a_faire')->count(),
                 'en_retard' => $duJour->filter(fn (Affectation $a) => $a->statut() === 'en_retard')->count() + $retardsVeille,
                 'absences' => Absence::query()

@@ -1,7 +1,9 @@
 @php
     $avance = $avance ?? false;
+    $vol = $vol ?? false;
     $statut = $affectation->statut();
     $couple = $affectation->couple;
+    $coupleCredit = ($affectation->estVolee() ? $affectation->completion?->user?->couple : null) ?? $couple;
     $peutModifier = $affectation->peutEtreModifieePar(auth()->user());
     $ouverte = (int) session('ouvrir_tache') === (int) $affectation->id;
     $faitA = $affectation->completion?->fait_a?->timezone(config('app.timezone'))
@@ -17,7 +19,7 @@
         </div>
         <p class="task-meta">jusqu’à {{ $affectation->limiteAt()->translatedFormat('D j M') }} · {{ $affectation->limiteAt()->format('H:i') }}</p>
         @if ($affectation->estFaite())
-            <p class="stamp">
+            <p class="stamp {{ $statut === 'volee' ? 'stamp-volee' : '' }} {{ $statut === 'prise' ? 'stamp-prise' : '' }}">
                 {{ $affectation->libelleFait() }}
                 à {{ $affectation->completion->fait_a->timezone(config('app.timezone'))->format('H:i') }}
             </p>
@@ -29,7 +31,12 @@
     </div>
 
     <div class="task-actions">
-        @if ($peutModifier && ! $affectation->estFaite())
+        @if (! $affectation->estFaite() && $vol)
+            <form method="POST" action="{{ route('completions.voler', $affectation) }}" class="task-actions-fait">
+                @csrf
+                <button type="submit" class="btn btn-prise">On l’a fait</button>
+            </form>
+        @elseif ($peutModifier && ! $affectation->estFaite())
             <form method="POST" action="{{ route('completions.store', $affectation) }}" class="task-actions-fait">
                 @csrf
                 <button type="submit" class="btn {{ ! $avance && $statut === 'en_retard' ? 'btn-warn' : 'btn-primary' }}">Fait</button>
@@ -43,6 +50,7 @@
     @include('partials.tache-modale', [
         'affectation' => $affectation,
         'couple' => $couple,
+        'coupleCredit' => $coupleCredit,
         'statut' => $statut,
         'peutModifier' => $peutModifier,
         'ouverte' => $ouverte,

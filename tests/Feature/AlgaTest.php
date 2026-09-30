@@ -531,6 +531,104 @@ class AlgaTest extends TestCase
             ->assertSee('Modifier')
             ->assertSee('modale', false)
             ->assertSee('Historique')
-            ->assertSee('Demain');
+            ->assertSee('Demain')
+            ->assertSee('Maman')
+            ->assertSee('Papa')
+            ->assertSee('Autre personne')
+            ->assertSee('On a fait leur job');
+    }
+
+    public function test_la_semaine_montre_le_passe_et_la_suivante(): void
+    {
+        Carbon::setTestNow('2026-08-19 12:00:00');
+        app(Repartiteur::class)->generer();
+        $lucas = User::query()->where('name', 'Lucas')->firstOrFail();
+
+        $this->actingAs($lucas)
+            ->get(route('tableau.historique', ['semaine' => '2026-08-10']))
+            ->assertOk()
+            ->assertSee('Semaine passée')
+            ->assertSee('Semaine suivante')
+            ->assertSee('10/8')
+            ->assertSee('Revenir à cette semaine');
+
+        $this->actingAs($lucas)
+            ->get(route('tableau.historique', ['semaine' => '2026-08-24']))
+            ->assertOk()
+            ->assertSee('Semaine prochaine')
+            ->assertSee('24/8')
+            ->assertDontSee('Semaine suivante');
+    }
+
+    public function test_on_peut_faire_le_job_de_l_autre_equipe(): void
+    {
+        Carbon::setTestNow('2026-08-18 20:00:00');
+        app(Repartiteur::class)->generer();
+        $lucas = User::query()->where('name', 'Lucas')->firstOrFail();
+        $stacy = User::query()->where('name', 'Stacy')->firstOrFail();
+
+        $leur = Affectation::query()
+            ->whereDate('date', '2026-08-18')
+            ->where('couple_id', $stacy->couple_id)
+            ->whereHas('tache', fn ($q) => $q->where('frequence', 'quotidien'))
+            ->firstOrFail();
+
+        $this->actingAs($stacy)
+            ->post(route('completions.voler', $leur))
+            ->assertSessionHas('erreur');
+
+        $this->actingAs($lucas)
+            ->post(route('completions.voler', $leur))
+            ->assertRedirect()
+            ->assertSessionHas('ok');
+
+        $leur->refresh()->load(['completion.user', 'couple', 'tache']);
+
+        $this->actingAs($lucas);
+        $this->assertSame('prise', $leur->statut());
+
+        $this->actingAs($stacy);
+        $this->assertSame('volee', $leur->statut());
+
+        $this->actingAs($lucas)
+            ->get(route('tableau.aujourdhui'))
+            ->assertSee('task-prise', false)
+            ->assertSee('Leur tâche, par nous');
+
+        $this->actingAs($stacy)
+            ->get(route('tableau.aujourdhui'))
+            ->assertSee('task-volee', false)
+            ->assertSee('Faite par l’autre');
+    }
+
+    public function test_maman_papa_et_autre_peuvent_etre_credites(): void
+    {
+        Carbon::setTestNow('2026-08-18 20:12:00');
+        $lucas = User::query()->where('name', 'Lucas')->firstOrFail();
+        $tache = Tache::query()->firstOrFail();
+        $affectation = Affectation::query()->create([
+            'tache_id' => $tache->id,
+            'couple_id' => $lucas->couple_id,
+            'date' => '2026-08-18',
+        ]);
+
+        $this->actingAs($lucas)
+            ->post(route('completions.store', $affectation), ['qui' => 'x-Maman'])
+            ->assertRedirect();
+
+        $completion = Completion::query()->firstOrFail();
+        $this->assertSame('Maman', $completion->credit_externe);
+        $this->assertNull($completion->auteur_id);
+        $this->assertSame('Maman', $completion->fresh()->load(['auteur', 'affectation.couple', 'user.couple'])->libelleAffiche());
+
+        $this->actingAs($lucas)
+            ->put(route('affectations.update', $affectation), [
+                'fait' => '1',
+                'qui' => 'x-Papa',
+                'fait_a' => '2026-08-18T19:40',
+            ])
+            ->assertRedirect();
+
+        $this->assertSame('Papa', $affectation->fresh()->completion->credit_externe);
     }
 }

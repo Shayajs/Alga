@@ -10,6 +10,8 @@
         ['cle' => 'a_faire', 'en' => 'TODO', 'fr' => 'À faire'],
         ['cle' => 'en_retard', 'en' => 'LATE', 'fr' => 'Pas coché la veille'],
         ['cle' => 'avance', 'en' => 'AHEAD', 'fr' => 'Avance sur demain'],
+        ['cle' => 'volee', 'en' => 'TAKEN', 'fr' => 'Faite par l’autre équipe'],
+        ['cle' => 'prise', 'en' => 'CLAIM', 'fr' => 'Leur tâche, faite par nous'],
     ];
 @endphp
 
@@ -74,6 +76,16 @@
             <p class="hq-metric-en">AHEAD</p>
             <p class="hq-metric-value">{{ $compteurs['avance'] }}</p>
             <p class="hq-metric-fr">Avance</p>
+        </article>
+        <article class="hq-metric hq-metric-volee">
+            <p class="hq-metric-en">TAKEN</p>
+            <p class="hq-metric-value">{{ $compteurs['volee'] }}</p>
+            <p class="hq-metric-fr">Faite par l’autre</p>
+        </article>
+        <article class="hq-metric hq-metric-prise">
+            <p class="hq-metric-en">CLAIM</p>
+            <p class="hq-metric-value">{{ $compteurs['prise'] }}</p>
+            <p class="hq-metric-fr">Leur tâche, par nous</p>
         </article>
     </section>
 

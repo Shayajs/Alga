@@ -48,8 +48,10 @@ class AccueilController extends Controller
                     ->sortBy(fn (Affectation $a) => match ($a->statut()) {
                         'en_retard' => 0,
                         'a_faire' => 1,
-                        'avance' => 2,
-                        default => 3,
+                        'volee' => 2,
+                        'prise' => 3,
+                        'avance' => 4,
+                        default => 5,
                     })
                     ->values();
 
@@ -57,7 +59,7 @@ class AccueilController extends Controller
                     'couple' => $couple,
                     'estLeMien' => $monCoupleId !== null && $couple->id === $monCoupleId,
                     'items' => $items,
-                    'faits' => $items->filter(fn (Affectation $a) => $a->statut() === 'fait')->count(),
+                    'faits' => $items->filter(fn (Affectation $a) => $a->estFaite())->count(),
                     'total' => $items->count(),
                 ];
             })
@@ -76,6 +78,10 @@ class AccueilController extends Controller
             'a_faire' => $lignes->filter(fn (Affectation $a) => $a->statut() === 'a_faire')->count(),
             'en_retard' => $lignes->filter(fn (Affectation $a) => $a->statut() === 'en_retard')->count(),
             'avance' => $lignes->filter(fn (Affectation $a) => $a->statut() === 'avance')->count(),
+            'volee' => $lignes->filter(fn (Affectation $a) => $a->statut() === 'volee')->count(),
+            'prise' => $autreBloc === null
+                ? 0
+                : $autreBloc['items']->filter(fn (Affectation $a) => $a->statut() === 'prise')->count(),
         ];
 
         return view('accueil.index', [

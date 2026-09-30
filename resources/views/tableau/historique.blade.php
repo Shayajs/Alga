@@ -9,7 +9,33 @@
     <p class="lede">
         Tes tâches seulement. Ménage du salon un jour, cuisine et linge le lendemain.
         Salon / toilettes et salle de bain : chaque lundi. ≈ 15 min. Jour à 03:00, UTC+2.
+        Les semaines passées, et la semaine prochaine.
     </p>
+
+    <nav class="week-nav" aria-label="Changer de semaine">
+        @if ($lundiPrecedent)
+            <a class="btn btn-ghost" href="{{ route('tableau.historique', ['semaine' => $lundiPrecedent->toDateString()]) }}">Semaine précédente</a>
+        @else
+            <span></span>
+        @endif
+        <p>
+            <span class="week-nav-label">
+                @if ($estSemaineCourante)
+                    Cette semaine
+                @elseif ($estSemaineProchaine)
+                    Semaine prochaine
+                @else
+                    Semaine passée
+                @endif
+            </span>
+            @unless ($estSemaineCourante)
+                <a href="{{ route('tableau.historique') }}">Revenir à cette semaine</a>
+            @endunless
+        </p>
+        @if ($lundiSuivant)
+            <a class="btn btn-ghost" href="{{ route('tableau.historique', ['semaine' => $lundiSuivant->toDateString()]) }}">Semaine suivante</a>
+        @endif
+    </nav>
 
     <div class="week-wrap">
         <table class="week-board">
@@ -55,7 +81,16 @@
 
     @if ($hebdo['total'] > 0)
         <h2 class="block-title">{{ $hebdo['titre'] }}</h2>
-        <p class="lot-kicker">Cette semaine · ≈ 15 min</p>
+        <p class="lot-kicker">
+            @if ($estSemaineProchaine)
+                Semaine prochaine
+            @elseif ($estSemaineCourante)
+                Cette semaine
+            @else
+                Semaine passée
+            @endif
+            · ≈ 15 min
+        </p>
         <div class="kanban-week-tasks">
             @include('partials.taches-liste', ['affectations' => $hebdo['lignes']])
         </div>
@@ -74,8 +109,8 @@
                         <span class="status-chip status-chip-a_faire">TODAY</span>
                     @endif
                 </header>
-                @if ($col['lot']['total'] > 0)
-                    @include('partials.taches-liste', ['affectations' => $col['lot']['lignes']])
+                @if ($col['lignes']->isNotEmpty())
+                    @include('partials.taches-liste', ['affectations' => $col['lignes']])
                 @endif
             </section>
         @endforeach

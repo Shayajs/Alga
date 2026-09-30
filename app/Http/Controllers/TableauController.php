@@ -6,6 +6,7 @@ use App\Models\Absence;
 use App\Models\Affectation;
 use App\Models\Couple;
 use App\Support\JourMaison;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
@@ -29,62 +30,134 @@ class TableauController extends Controller
             ->values();
 
         $miennes = $affectations->where('couple_id', $monCouple->id)->values();
+        $autres = $affectations->where('couple_id', '!=', $monCouple->id)->values();
 
         return view('tableau.aujourdhui', [
             'jour' => $jour,
             'lendemain' => $lendemain,
             'monCouple' => $monCouple,
+            'autreCouple' => Couple::query()->whereKeyNot($monCouple->id)->orderBy('id')->first(),
             'lots' => $this->grouperLots($miennes),
+            'lotsAutre' => $this->grouperLots($autres),
+            'resteAutre' => $autres->reject->estFaite()->count(),
             'lotsAvance' => $this->grouperLots($demain),
             'lotDemain' => $demain->first()?->tache->libelleLot(),
         ]);
     }
 
-    public function historique(): View
+    public function historique(Request $request): View
     {
         $aujourdHui = JourMaison::actuel();
-        $lundi = $aujourdHui->copy()->startOfWeek(Carbon::MONDAY);
-        $relations = Affectation::RELATIONS_BOARD;
+        $lundiActuel = $aujourdHui->copy()->startOfWeek(Carbon::MONDAY);
         $monCoupleId = auth()->user()->couple_id;
+        [$lundiMin, $lundiMax] = $this->bornesSemaines($lundiActuel);
+        $lundi = $this->lundiDemande($request->query('semaine'), $lundiActuel, $lundiMin, $lundiMax);
 
         $colonnes = collect();
         for ($i = 0; $i < 7; $i++) {
             $jour = $lundi->copy()->addDays($i);
-            $quotidien = Affectation::query()
-                ->with($relations)
-                ->whereDate('date', $jour)
-                ->where('couple_id', $monCoupleId)
-                ->whereHas('tache', fn ($q) => $q->where('frequence', 'quotidien'))
-                ->get()
-                ->sortBy(fn (Affectation $a) => sprintf('%s-%02d', $a->tache->groupe ?? 'A', $a->tache->ordre))
-                ->values();
+            $quotidien = $this->lignesDuCouple($jour, 'quotidien', $monCoupleId);
+            $prises = $this->lignesPrises($jour, 'quotidien', $monCoupleId);
 
             $colonnes->push([
                 'date' => $jour,
                 'estAujourdhui' => $jour->isSameDay($aujourdHui),
                 'absents' => $this->couplesAbsents($jour),
                 'lot' => $this->resumeLot($quotidien),
+                'lignes' => $quotidien->concat($prises)->values(),
             ]);
         }
 
-        $hebdoLignes = Affectation::query()
-            ->with($relations)
-            ->whereDate('date', $lundi)
-            ->where('couple_id', $monCoupleId)
-            ->whereHas('tache', fn ($q) => $q->where('frequence', 'hebdo'))
-            ->get()
-            ->sortBy(fn (Affectation $a) => sprintf('%s-%02d', $a->tache->piece, $a->tache->ordre))
-            ->values();
-
+        $hebdoLignes = $this->lignesDuCouple($lundi, 'hebdo', $monCoupleId);
         $hebdo = $this->resumeLot($hebdoLignes);
+        $hebdo['lignes'] = $hebdoLignes
+            ->concat($this->lignesPrises($lundi, 'hebdo', $monCoupleId))
+            ->values();
 
         return view('tableau.historique', [
             'aujourdHui' => $aujourdHui,
             'lundi' => $lundi,
             'dimanche' => $lundi->copy()->addDays(6),
+            'lundiActuel' => $lundiActuel,
+            'lundiPrecedent' => $lundi->gt($lundiMin) ? $lundi->copy()->subWeek() : null,
+            'lundiSuivant' => $lundi->lt($lundiMax) ? $lundi->copy()->addWeek() : null,
+            'estSemaineCourante' => $lundi->isSameDay($lundiActuel),
+            'estSemaineProchaine' => $lundi->gt($lundiActuel),
             'colonnes' => $colonnes,
             'hebdo' => $hebdo,
         ]);
+    }
+
+    /**
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    private function bornesSemaines(Carbon $lundiActuel): array
+    {
+        $lundiMin = $lundiActuel->copy()->subWeeks(16);
+        $premiere = Affectation::query()->min('date');
+
+        if ($premiere) {
+            $lundiDonnee = Carbon::parse($premiere, config('app.timezone'))->startOfWeek(Carbon::MONDAY);
+            if ($lundiDonnee->lt($lundiMin)) {
+                $lundiMin = $lundiDonnee;
+            }
+        }
+
+        return [$lundiMin, $lundiActuel->copy()->addWeek()];
+    }
+
+    private function lundiDemande(mixed $semaine, Carbon $lundiActuel, Carbon $lundiMin, Carbon $lundiMax): Carbon
+    {
+        $lundi = $lundiActuel->copy();
+
+        if (is_string($semaine) && $semaine !== '') {
+            try {
+                $lundi = Carbon::parse($semaine, config('app.timezone'))->startOfWeek(Carbon::MONDAY);
+            } catch (\Throwable) {
+                $lundi = $lundiActuel->copy();
+            }
+        }
+
+        if ($lundi->lt($lundiMin)) {
+            return $lundiMin->copy();
+        }
+
+        if ($lundi->gt($lundiMax)) {
+            return $lundiMax->copy();
+        }
+
+        return $lundi;
+    }
+
+    private function lignesDuCouple(Carbon $jour, string $frequence, int $monCoupleId): Collection
+    {
+        return $this->lignesFiltrees($jour, $frequence, function ($query) use ($monCoupleId): void {
+            $query->where('couple_id', $monCoupleId);
+        });
+    }
+
+    private function lignesPrises(Carbon $jour, string $frequence, int $monCoupleId): Collection
+    {
+        return $this->lignesFiltrees($jour, $frequence, function ($query) use ($monCoupleId): void {
+            $query->where('couple_id', '!=', $monCoupleId)
+                ->whereHas('completion', function ($completion) use ($monCoupleId): void {
+                    $completion->whereHas('user', fn ($user) => $user->where('couple_id', $monCoupleId));
+                });
+        });
+    }
+
+    private function lignesFiltrees(Carbon $jour, string $frequence, callable $filtre): Collection
+    {
+        return Affectation::query()
+            ->with(Affectation::RELATIONS_BOARD)
+            ->whereDate('date', $jour)
+            ->where($filtre)
+            ->whereHas('tache', fn ($q) => $q->where('frequence', $frequence))
+            ->get()
+            ->sortBy(fn (Affectation $a) => $frequence === 'hebdo'
+                ? sprintf('%s-%02d', $a->tache->piece, $a->tache->ordre)
+                : sprintf('%s-%02d', $a->tache->groupe ?? 'A', $a->tache->ordre))
+            ->values();
     }
 
     private function affectationsVisibles(Carbon $jour): Collection
@@ -132,18 +205,7 @@ class TableauController extends Controller
      */
     private function resumeLot(Collection $lignes): array
     {
-        $statuts = $lignes->map->statut();
-        $tone = 'vide';
-
-        if ($statuts->contains('en_retard')) {
-            $tone = 'en_retard';
-        } elseif ($statuts->contains('a_faire')) {
-            $tone = 'a_faire';
-        } elseif ($statuts->contains('avance')) {
-            $tone = 'avance';
-        } elseif ($statuts->contains('fait')) {
-            $tone = 'fait';
-        }
+        $tone = Affectation::toneParmi($lignes->map->statut());
 
         return [
             'couple' => $lignes->first()?->couple,

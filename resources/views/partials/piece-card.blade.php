@@ -7,9 +7,7 @@
     $faits = $affectations->filter->estFaite()->count();
     $total = $affectations->count();
     $statuts = $affectations->map->statut();
-    $tone = $statuts->contains('en_retard') ? 'en_retard'
-        : ($statuts->contains('a_faire') ? 'a_faire'
-        : ($statuts->contains('avance') ? 'avance' : 'fait'));
+    $tone = \App\Models\Affectation::toneParmi($statuts);
     $cle = session('ouvrir_piece');
     $tacheOuverte = (int) session('ouvrir_tache');
     $ouverte = ($cle && str_contains($id, (string) $cle))

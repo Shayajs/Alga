@@ -4,10 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Affectation;
 use App\Services\JournalAffectation;
+use App\Support\CreditTache;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use Illuminate\Validation\Rule;
 
 class AffectationController extends Controller
 {
@@ -19,27 +19,38 @@ class AffectationController extends Controller
             return back()->with('erreur', 'C’est le lot de l’autre couple.');
         }
 
-        $affectation->loadMissing(['couple', 'tache', 'completion']);
+        $affectation->loadMissing(['couple', 'tache', 'completion.user']);
 
         $data = $request->validate([
             'fait' => ['required', 'boolean'],
-            'auteur_id' => [
-                'nullable',
-                'integer',
-                Rule::exists('users', 'id')->where('couple_id', $affectation->couple_id),
-            ],
+            'qui' => ['nullable', 'string', 'max:40'],
+            'auteur_id' => ['nullable', 'integer'],
             'fait_a' => ['nullable', 'date'],
             'commentaire' => ['nullable', 'string', 'max:280'],
         ]);
 
+        $couples = array_values(array_unique(array_filter([
+            $affectation->couple_id,
+            $user->couple_id,
+            $affectation->completion?->user?->couple_id,
+        ])));
+        $credit = CreditTache::depuis($request, $couples);
+
         $fait = $request->boolean('fait');
-        $auteurId = isset($data['auteur_id']) && $data['auteur_id'] !== '' ? (int) $data['auteur_id'] : null;
         $faitA = $fait
             ? Carbon::parse($data['fait_a'] ?? now(), config('app.timezone'))
             : null;
         $commentaire = isset($data['commentaire']) ? trim((string) $data['commentaire']) : null;
 
-        $journal->appliquer($affectation, $user, $fait, $auteurId, $faitA, $commentaire ?: null);
+        $journal->appliquer(
+            $affectation,
+            $user,
+            $fait,
+            $credit['auteur_id'],
+            $faitA,
+            $commentaire ?: null,
+            $credit['credit_externe'],
+        );
 
         return back()
             ->with('ok', 'Modification enregistrée et horodatée.')

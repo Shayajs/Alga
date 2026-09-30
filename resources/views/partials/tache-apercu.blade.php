@@ -8,7 +8,7 @@
         <span class="status-chip status-chip-{{ $statut }}">{{ $affectation->codeStatut() }} · {{ $affectation->libelleStatut() }}</span>
     </div>
     @if ($affectation->estFaite())
-        <p class="stamp">
+        <p class="stamp {{ $statut === 'volee' ? 'stamp-volee' : '' }} {{ $statut === 'prise' ? 'stamp-prise' : '' }}">
             {{ $affectation->libelleFait() }}
             à {{ $affectation->completion->fait_a->timezone(config('app.timezone'))->format('H:i') }}
         </p>

@@ -7,12 +7,7 @@
     @csrf
     <label class="cocher-qui">
         Qui l’a fait
-        <select name="auteur_id">
-            <option value="">{{ $couple->nom }}</option>
-            @foreach ($couple->membres as $membre)
-                <option value="{{ $membre->id }}">{{ $membre->name }}</option>
-            @endforeach
-        </select>
+        @include('partials.qui-select', ['affectation' => $affectation, 'couple' => $couple])
     </label>
     <button type="submit" class="btn {{ ! $avance && $statut === 'en_retard' ? 'btn-warn' : 'btn-primary' }}">
         @if ($avance)

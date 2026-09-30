@@ -29,12 +29,7 @@
                         </label>
                         <label>
                             Qui
-                            <select name="auteur_id">
-                                <option value="">{{ $couple->nom }}</option>
-                                @foreach ($couple->membres as $membre)
-                                    <option value="{{ $membre->id }}" @selected($affectation->completion?->auteur_id === $membre->id)>{{ $membre->name }}</option>
-                                @endforeach
-                            </select>
+                            @include('partials.qui-select', ['affectation' => $affectation, 'couple' => $coupleCredit ?? $couple])
                         </label>
                     </div>
                     <label>

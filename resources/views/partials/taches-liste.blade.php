@@ -3,6 +3,7 @@
         @include('partials.tache-ligne', [
             'affectation' => $affectation,
             'avance' => $avance ?? false,
+            'vol' => $vol ?? false,
         ])
     @endforeach
 </ul>
